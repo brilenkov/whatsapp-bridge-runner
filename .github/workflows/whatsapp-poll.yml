@@ -8,7 +8,7 @@ on:
 jobs:
   poll:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - name: Checkout brain-tools
         uses: actions/checkout@v4
@@ -22,7 +22,7 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Install chromium + unzip
+      - name: Install chromium + unzip + p7zip
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq chromium-browser unzip p7zip-full
@@ -41,10 +41,10 @@ jobs:
             "https://raw.githubusercontent.com/brilenkov/whatsapp-bridge-session/main/session.zip"
           ls -la /tmp/session.zip
           mkdir -p .wweb_auth
-          7z x /tmp/session.zip -o.wweb_auth -y || unzip -o /tmp/session.zip -d .wweb_auth
-          echo "Session files: $(ls .wweb_auth | wc -l)"
+          7z x /tmp/session.zip -o.wweb_auth -y 2>/dev/null || unzip -o /tmp/session.zip -d .wweb_auth
+          echo "Session files: $(find .wweb_auth -type f | wc -l)"
 
-      - name: Run WhatsApp bridge (180s)
+      - name: Run WhatsApp bridge (300s)
         env:
           CHAT_MONITOR_URL: ${{ secrets.CHAT_MONITOR_URL }}
           CHAT_MONITOR_TOKEN: ${{ secrets.CHAT_MONITOR_TOKEN }}
@@ -57,7 +57,7 @@ jobs:
           SESSION_REPO: 'brilenkov/whatsapp-bridge-session'
           GITHUB_PAT: ${{ secrets.GH_PAT }}
           ACCOUNT_NAME: 'alexey_brilenkov'
-          BRIDGE_RUN_SECONDS: '180'
+          BRIDGE_RUN_SECONDS: '300'
           RENDER: 'true'
           RENDER_EXTERNAL_URL: 'https://github.com'
         run: |
