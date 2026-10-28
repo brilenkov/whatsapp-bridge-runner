@@ -22,10 +22,10 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Install chromium + unzip + p7zip
+      - name: Install chromium + zip + unzip + p7zip
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq chromium-browser unzip p7zip-full
+          sudo apt-get install -y -qq chromium-browser unzip p7zip-full zip
           echo "Chromium: $(which chromium-browser || which chromium)"
 
       - name: Install npm deps
@@ -58,6 +58,7 @@ jobs:
           GITHUB_PAT: ${{ secrets.GH_PAT }}
           ACCOUNT_NAME: 'alexey_brilenkov'
           BRIDGE_RUN_SECONDS: '300'
+          SAVE_SESSION: 'true'
           RENDER: 'true'
           RENDER_EXTERNAL_URL: 'https://github.com'
         run: |
