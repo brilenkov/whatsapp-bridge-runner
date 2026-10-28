@@ -2,21 +2,19 @@ name: WhatsApp Bridge Poll
 
 on:
   schedule:
-    # Каждые 10 минут (GitHub minimum for public repos)
     - cron: '*/10 * * * *'
-  workflow_dispatch: # ручной запуск
+  workflow_dispatch:
 
 jobs:
   poll:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Checkout brain-tools (whatsapp_bridge code)
+      - name: Checkout brain-tools
         uses: actions/checkout@v4
         with:
           repository: brilenkov/brain-tools
           token: ${{ secrets.GH_PAT }}
-          sparse-checkout: bots/chat-monitor-bot/whatsapp_bridge
           path: bridge
 
       - name: Setup Node.js
@@ -24,16 +22,16 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Install chromium
+      - name: Install chromium + unzip
         run: |
-          sudo apt-get update
-          sudo apt-get install -y chromium-browser unzip
-          which chromium-browser || which chromium
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq chromium-browser unzip p7zip-full
+          echo "Chromium: $(which chromium-browser || which chromium)"
 
       - name: Install npm deps
         run: |
           cd bridge/bots/chat-monitor-bot/whatsapp_bridge
-          npm install
+          npm install --production
 
       - name: Download session from GitHub
         run: |
@@ -41,11 +39,12 @@ jobs:
           curl -sL -H "Authorization: token ${{ secrets.GH_PAT }}" \
             -o /tmp/session.zip \
             "https://raw.githubusercontent.com/brilenkov/whatsapp-bridge-session/main/session.zip"
+          ls -la /tmp/session.zip
           mkdir -p .wweb_auth
-          unzip -o /tmp/session.zip -d .wweb_auth
-          echo "Session restored: $(ls .wweb_auth | head -5)"
+          7z x /tmp/session.zip -o.wweb_auth -y || unzip -o /tmp/session.zip -d .wweb_auth
+          echo "Session files: $(ls .wweb_auth | wc -l)"
 
-      - name: Run WhatsApp bridge (3 min)
+      - name: Run WhatsApp bridge (180s)
         env:
           CHAT_MONITOR_URL: ${{ secrets.CHAT_MONITOR_URL }}
           CHAT_MONITOR_TOKEN: ${{ secrets.CHAT_MONITOR_TOKEN }}
@@ -53,20 +52,22 @@ jobs:
           ADMIN_TG_ID: ${{ secrets.ADMIN_TG_ID }}
           WHATSAPP_PHONE: ${{ secrets.WHATSAPP_PHONE }}
           PUPPETEER_SKIP_DOWNLOAD: 'true'
-          PUPPETEER_EXECUTABLE_PATH: '/usr/bin/chromium-browser'
           PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: 'true'
+          PUPPETEER_EXECUTABLE_PATH: '/usr/bin/chromium-browser'
           SESSION_REPO: 'brilenkov/whatsapp-bridge-session'
           GITHUB_PAT: ${{ secrets.GH_PAT }}
           ACCOUNT_NAME: 'alexey_brilenkov'
           BRIDGE_RUN_SECONDS: '180'
+          RENDER: 'true'
+          RENDER_EXTERNAL_URL: 'https://github.com'
         run: |
           cd bridge/bots/chat-monitor-bot/whatsapp_bridge
-          timeout 180 node index.js || true
+          node index.js 2>&1 | tee bridge.log || true
 
       - name: Upload logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: bridge-logs
-          path: bridge/bots/chat-monitor-bot/whatsapp_bridge/*.log
+          path: bridge/bots/chat-monitor-bot/whatsapp_bridge/bridge.log
           retention-days: 3
